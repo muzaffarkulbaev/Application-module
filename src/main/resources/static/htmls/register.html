@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+
+<div class="card shadow p-4" style="max-width: 400px; width: 100%;">
+    <h3 class="text-center mb-4">Регистрация</h3>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" placeholder="Введите email">
+    </div>
+
+    <div class="mb-3">
+        <label for="fullName" class="form-label">Полное имя</label>
+        <input type="text" class="form-control" id="fullName" placeholder="Введите полное имя">
+    </div>
+
+    <div class="mb-3">
+        <label for="password" class="form-label">Пароль</label>
+        <input type="password" class="form-control" id="password" placeholder="Введите пароль">
+    </div>
+
+    <div class="mb-3">
+        <label for="confirmPassword" class="form-label">Подтвердите пароль</label>
+        <input type="password" class="form-control" id="confirmPassword" placeholder="Повторите пароль">
+    </div>
+
+    <div class="d-grid">
+        <button class="btn btn-dark" id="registerBtn">Зарегистрироваться</button>
+    </div>
+
+    <div class="text-center mt-3">
+        <small>Уже есть аккаунт? <a href="login.html">Войти</a></small>
+    </div>
+</div>
+
+<script>
+    const apiUrl = "http://localhost:8080/api";
+
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+        const email = document.getElementById('email').value.trim();
+        const fullName = document.getElementById('fullName').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+        if (!email) {
+            alert("Введите email!");
+            return;
+        }
+        if (!fullName) {
+            alert("Введите полное имя!");
+            return;
+        }
+        if (!password) {
+            alert("Введите пароль!");
+            return;
+        }
+        if (!confirmPassword) {
+            alert("Подтвердите пароль!");
+            return;
+        }
+        if (password !== confirmPassword) {
+            alert("Пароли не совпадают!");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/auth/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, fullName, password, confirmPassword })
+            });
+
+            if (response.ok) {
+                alert("Регистрация прошла успешно!");
+                document.getElementById('email').value = '';
+                document.getElementById('fullName').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('confirmPassword').value = '';
+                window.location.href = "login.html";
+            } else {
+                const errorData = await response.json();
+                alert(errorData.message || "Ошибка при регистрации.");
+            }
+        } catch (error) {
+            alert("Ошибка сети.");
+        }
+    });
+</script>
+
+</body>
+</html>

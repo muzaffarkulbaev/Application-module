@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавление пользователей и заявок</title>
+</head>
+<body>
+
+<div>
+    <h3>Добавить пользователя</h3>
+    <label>Email:</label>
+    <input type="email" id="email" placeholder="Введите email"><br><br>
+
+    <label>Полное имя:</label>
+    <input type="text" id="fullName" placeholder="Введите полное имя"><br><br>
+    <button id="addUserBtn">Добавить</button>
+</div>
+
+<hr>
+
+<div>
+    <h3>Отправить заявку</h3>
+
+<!--    <label>Отправитель:</label>-->
+<!--    <select id="userSelect">-->
+<!--        <option value="">Выберите пользователя</option>-->
+<!--    </select><br><br>-->
+
+    <label>Token:</label>
+    <input type="text" id="token" placeholder="Enter token"><br><br>
+    <label>Текст заявки:</label>
+    <textarea id="requestText" placeholder="Введите заявку"></textarea>
+    <br><br>
+    <button id="sendRequestBtn">Отправить</button>
+</div>
+
+<script>
+    const apiUrl = "http://localhost:8080/api";
+
+    window.addEventListener('load', loadUsers);
+
+    async function loadUsers(){
+        try {
+            const response = await fetch(`${apiUrl}/users`);
+            const users = await response.json();
+
+            const selects = [document.getElementById('userSelect')/*, document.getElementById('userSelect2')*/];
+            selects.forEach(select => {
+                select.innerHTML = '<option value="">Выберите пользователя</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.fullName}`;
+                    select.appendChild(option);
+                });
+            });
+        } catch (error) {
+            alert("Ошибка при загрузке пользователей");
+        }
+    }
+
+    document.getElementById('addUserBtn').addEventListener('click',async () => {
+        const email = document.getElementById('email').value;
+        const fullName = document.getElementById('fullName').value;
+
+        if (!email || !fullName){
+            alert("Ввудите email  и полное имя");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/users`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json"},
+                body: JSON.stringify({email, fullName})
+            });
+
+            if (response.ok) {
+                alert("Пользователь добавлен!");
+                document.getElementById('email').value = '';
+                document.getElementById('fullName').value = '';
+                loadUsers();
+            } else {
+                alert("Ошибка при добавлении пользователя");
+            }
+        } catch (error) {
+            alert("Ошибка сети");
+        }
+    });
+
+    document.getElementById('sendRequestBtn').addEventListener('click', async () => {
+        // const userId = document.getElementById('userSelect').value;
+        const token = "Bearer " + document.getElementById('token').value;
+        const text = document.getElementById('requestText').value.trim();
+
+        if (!text) {
+            alert("Выберите пользователя и введите текст заявки");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/application/save`, {
+                method: "POST",
+                headers: {
+                    "Content-Type":"application/json",
+                    "Authorization":token
+                },
+                body: JSON.stringify({text})
+            });
+
+            if (response.ok){
+                alert("Заявка отправлена!");
+                document.getElementById('requestText').value = '';
+            } else {
+                alert("Ошибка при отправке заявки");
+            }
+        } catch (error){
+            alert("Error!!!");
+        }
+    });
+</script>
+
+</body>
+</html>
+
+
+

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отчёт за период</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+    <h2 class="mb-4 text-center">📊 Отчёт по заявкам за период</h2>
+
+    <div class="card p-4 shadow-sm">
+        <form id="reportForm" class="row g-3 mb-4">
+            <div class="col-md-5">
+                <label for="startDate" class="form-label">Дата начала</label>
+                <input type="date" id="startDate" class="form-control" required>
+            </div>
+            <div class="col-md-5">
+                <label for="endDate" class="form-label">Дата окончания</label>
+                <input type="date" id="endDate" class="form-control" required>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Показать</button>
+            </div>
+        </form>
+
+        <div id="resultSection" class="table-responsive d-none">
+            <table class="table table-bordered table-striped align-middle">
+                <thead class="table-dark text-center">
+                <tr>
+                    <th>Дата</th>
+                    <th>Активные</th>
+                    <th>На рассмотрении</th>
+                    <th>Неактивные</th>
+                    <th>Удалённые</th>
+                </tr>
+                </thead>
+                <tbody id="reportTableBody" class="text-center"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = "http://localhost:8080/api";
+    document.getElementById('reportForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const startPeriod = document.getElementById('startDate').value;
+    const endPeriod = document.getElementById('endDate').value;
+
+    const requestBody = { startPeriod, endPeriod };
+
+    try {
+        const response = await fetch(`${apiUrl}/application/report/period`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token') // если есть авторизация
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            alert("Ошибка: " + response.status + " " + response.statusText);
+            return;
+        }
+
+        const data = await response.json();
+        const tbody = document.getElementById('reportTableBody');
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${row.date}</td>
+                    <td>${row.countOfActive}</td>
+                    <td>${row.countOfConsidering}</td>
+                    <td>${row.countOfInActive}</td>
+                    <td>${row.countOfDeleted}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('resultSection').classList.remove('d-none');
+
+    } catch (err) {
+        console.error(err);
+        alert("Ошибка запроса");
+    }
+});
+</script>
+</body>
+</html>

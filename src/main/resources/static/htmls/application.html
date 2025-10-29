@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавление пользователей и заявок</title>
+</head>
+<body>
+
+<div>
+    <h3>Посмотреть мои заявки</h3>
+    <select id="userSelect">
+        <option value="">Выберите пользователя</option>
+    </select>
+    <button id="getUserApplications">Посмотреть</button>
+    <table id="applicationTable" border="1" style="margin-top:10px; border-collapse: collapse; width: 100%;">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Текст заявки</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+    const apiUrl = "http://localhost:8080/api";
+
+    window.addEventListener('load', loadUsers);
+
+    const token = localStorage.getItem("token");
+    async function loadUsers(){
+        try {
+            const response = await fetch(`${apiUrl}/users`,{
+                method:"GET",
+                headers:{
+                    "Authorization":"Bearer " + token
+                }
+            });
+            const users = await response.json();
+
+            const selects = [document.getElementById('userSelect')/*, document.getElementById('userSelect2')*/];
+            selects.forEach(select => {
+                select.innerHTML = '<option value="">Выберите пользователя</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.fullName}`;
+                    select.appendChild(option);
+                });
+            });
+        } catch (error) {
+            alert("Ошибка при загрузке пользователей");
+        }
+    }
+
+    document.getElementById('getUserApplications').addEventListener('click', async () => {
+        const userId = document.getElementById('userSelect').value;
+
+        if (!userId) {
+            alert("Выберите пользователя!");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}/application/${userId}`);
+            const applications = await response.json();
+
+            const tbody = document.querySelector('#applicationTable tbody');
+            tbody.innerHTML = ''; // очищаем таблицу перед добавлением новых данных
+
+            counter = 0;
+            applications.forEach(app => {
+                const row = document.createElement('tr');
+                counter++;
+                const idCell = document.createElement('td');
+                idCell.textContent = counter;
+                row.appendChild(idCell);
+
+                const textCell = document.createElement('td');
+                textCell.textContent = app.text;
+                row.appendChild(textCell);
+
+                const actionCell = document.createElement('td');
+
+                const updateBtn = document.createElement('button');
+                updateBtn.textContent = "Update";
+                updateBtn.onclick = () => updateApplication(app.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = "Delete";
+                deleteBtn.onclick = () => deleteApplication(app.id);
+
+                actionCell.appendChild(updateBtn);
+                actionCell.appendChild(deleteBtn);
+                row.appendChild(actionCell);
+
+                tbody.appendChild(row);
+            });
+
+        } catch (error) {
+            alert("Ошибка при загрузке заявок");
+            console.error(error);
+        }
+    });
+
+    async function updateApplication(id) {
+        const newText = prompt("Введите новый текст заявки:");
+        if (!newText) return;
+
+        try {
+            const response = await fetch(`${apiUrl}/application/update`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id:id , text: newText })
+            });
+
+            if (response.ok) {
+                alert("Заявка обновлена!");
+                document.getElementById('getUserApplications').click(); // обновляем таблицу
+            } else {
+                alert("Ошибка при обновлении");
+            }
+        } catch (error) {
+            alert("Ошибка сети");
+            console.error(error);
+        }
+    }
+
+    async function deleteApplication(id) {
+        // if (!confirm("Удалить эту заявку?")) return;
+
+        try {
+            const response = await fetch(`${apiUrl}/application/delete/${id}`, {
+                method: "DELETE"
+            });
+
+            if (response.ok) {
+                alert("Заявка удалена!");
+                document.getElementById('getUserApplications').click(); // обновляем таблицу
+            } else {
+                alert("Ошибка при удалении");
+            }
+        } catch (error) {
+            alert("Ошибка сети");
+            console.error(error);
+        }
+    }
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ Панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+
+    <div class="container">
+        <h3 class="text-center mb-4">Заявки</h3>
+
+        <div class="d-flex justify-content-between mb-3">
+            <div>
+                <select id="userSelect" class="form-select d-inline w-auto">
+                    <option value="">Выберите пользователя</option>
+                </select>
+                <button id="getUserApps" class="btn btn-primary">Посмотреть</button>
+            </div>
+            <button id="getAllApps" class="btn btn-success">Посмотреть все заявки</button>
+            <button id="reportButton" class="btn btn-primary" onclick="openReportWindow()">Посмотреть отчёты</button>
+        </div>
+
+        <table id="appTable" class="table table-bordered table-striped">
+            <thead class="table-dark">
+            <tr>
+                <th>N#</th>
+                <th>Имя отправителя</th>
+                <th>Текст заявки</th>
+                <th>Время отправки</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <hr class="my-5">
+
+        <h3 class="text-center mb-3">Список пользователей</h3>
+        <table id="userTable" class="table table-bordered">
+            <thead class="table-dark">
+            <tr>
+                <th>N#</th>
+                <th>Имя</th>
+                <th>Email</th>
+                <th>Роли</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const apiUrl = "http://localhost:8080/api";
+        const token = localStorage.getItem("token");
+
+        window.addEventListener('load', async () => {
+            await fillSelectOption();
+            await loadAllUsers();
+        });
+
+        async function openReportWindow() {
+            window.location.href = "report.html";
+        }
+
+        async function fillSelectOption() {
+            const users = await loadUsers();
+            const select = document.getElementById('userSelect');
+            select.innerHTML = '<option value="">Выберите пользователя</option>';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.fullName;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${apiUrl}/users`, {
+                    method: "GET",
+                    headers: { "Authorization": "Bearer " + token }
+                });
+                return await response.json();
+            } catch (error) {
+                alert("Ошибка при загрузке пользователей");
+                return [];
+            }
+        }
+
+        document.getElementById('getAllApps').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${apiUrl}/application/getAll`, {
+                    method: "GET",
+                    headers: { "Authorization": "Bearer " + token }
+                });
+                const applications = await response.json();
+                renderApplications(applications);
+            } catch (error) {
+                alert("Ошибка при загрузке заявок");
+            }
+        });
+
+        document.getElementById('getUserApps').addEventListener('click', async () => {
+            const userId = document.getElementById('userSelect').value;
+            if (!userId) return alert("Выберите пользователя!");
+            try {
+                const response = await fetch(`${apiUrl}/application/get/${userId}`, {
+                    method: "GET",
+                    headers: { "Authorization": "Bearer " + token }
+                });
+                const applications = await response.json();
+                renderApplications(applications);
+            } catch (error) {
+                alert("Ошибка при загрузке заявок пользователя");
+            }
+        });
+
+        function renderApplications(applications) {
+            const tbody = document.querySelector('#appTable tbody');
+            tbody.innerHTML = '';
+            let counter = 0;
+            applications.forEach(app => {
+                const row = document.createElement('tr');
+                counter++;
+                row.innerHTML = `
+                    <td>${counter}</td>
+                    <td>${app.userFullName || '—'}</td>
+                    <td>${app.text || '—'}</td>
+                    <td>${app.createdTime || '—'}</td>
+                    <td>
+                        ${app.status || '—'}
+                        <button class="btn btn-sm btn-warning" onclick="updateStatus(${app.id})">Изменить статус</button>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="updateApplication(${app.id})">Изменить</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteApplication(${app.id})">Удалить</button>
+                    </td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function updateApplication(id) {
+            const newText = prompt("Введите новый текст заявки:");
+            if (!newText) return;
+            try {
+                const response = await fetch(`${apiUrl}/application/update`, {
+                    method: "PUT",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ id, text: newText })
+                });
+                if (response.ok) {
+                    alert("Заявка обновлена!");
+                    document.getElementById('getAllApps').click();
+                } else alert("Ошибка при обновлении");
+            } catch {
+                alert("Ошибка сети");
+            }
+        }
+
+        async function deleteApplication(id) {
+            if (!confirm("Удалить заявку?")) return;
+            try {
+                const response = await fetch(`${apiUrl}/application/delete/${id}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": "Bearer " + token }
+                });
+                if (response.ok) {
+                    alert("Заявка удалена!");
+                    document.getElementById('getAllApps').click();
+                } else alert("Ошибка при удалении");
+            } catch {
+                alert("Ошибка сети");
+            }
+        }
+
+        async function loadAllUsers() {
+            const users = await loadUsers();
+            const tbody = document.querySelector('#userTable tbody');
+            tbody.innerHTML = '';
+            let counter = 0;
+
+            users.forEach(user => {
+                counter++;
+
+                // roles — это массив строк, например: ["ADMIN", "USER"]
+                const roles = user.roles && user.roles.length > 0
+                    ? user.roles.join(', ')
+                    : '—';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                <td>${counter}</td>
+                <td>${user.fullName}</td>
+                <td>${user.email}</td>
+                <td>
+                    ${roles}
+                    <button class="btn btn-sm btn-warning" onclick="assignRoleManager(${user.id})">Сделать менеджером</button>
+                </td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function assignRoleManager(id){
+            try{
+                const response = await fetch(`${apiUrl}/users/assign/manager/${id}`,{
+                    method:"POST",
+                    headers:{
+                        "Authorization":"Bearer "+token
+                    }
+                });
+                if (response.ok){
+                    alert("Успешно стал менеджером!");
+                    await loadUsers();
+                }else alert("Ошибка при добавлений роли");
+            }catch {
+                alert("Ошибка сети!");
+            }
+        }
+
+        async function updateStatus(id) {
+            const newStatus = prompt("Статусы: ACTIVE,CONSIDERING,INACTIVE.\nВедите новый статус:");
+            if (!newStatus) return;
+            try{
+                const response = await fetch(`${apiUrl}/application/changeStatus`,{
+                    method:"POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body:JSON.stringify({appId: id, status: newStatus})
+                });
+                if (response.ok){
+                    alert("Статус успешно изменено!");
+                    document.getElementById('getAllApps').click();
+                }else alert("Ошибка при изменений статуса");
+            } catch {
+                alert("Ошибка сети");
+            }
+        }
+
+    </script>
+
+</body>
+</html>
+
